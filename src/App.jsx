@@ -19,9 +19,13 @@ import {
   serverTimestamp, 
   updateDoc, 
   increment, 
-  setDoc
+  setDoc,
+  setLogLevel // 引入 setLogLevel
 } from 'firebase/firestore';
 import { Flower, Flame, Heart, X, Lock, Trash2, Info, Landmark } from 'lucide-react';
+
+// 設定 Firestore Log Level (方便偵錯)
+setLogLevel('debug');
 
 // --- Firebase Configuration ---
 // <<<<<<<<<<<<<<< 修正黑屏問題：請務必在此填入您的真實 Firebase 設定！ >>>>>>>>>>>>>>>
@@ -149,7 +153,8 @@ const CommentSection = ({ comments, onSubmit, isAdmin, onDelete }) => {
     await onSubmit(name || '有心人', message);
     setMessage('');
     setName('');
-    setIsSubmitting(false);
+    // 即使寫入失敗，也將狀態設為 false，避免卡死
+    setIsSubmitting(false); 
   };
 
   const formatDate = (timestamp) => {
@@ -181,8 +186,8 @@ const CommentSection = ({ comments, onSubmit, isAdmin, onDelete }) => {
         />
         <button 
           type="submit" 
-          disabled={isSubmitting}
-          className="w-full py-2 border border-stone-700 text-stone-400 rounded-lg hover:bg-stone-800 hover:text-stone-200 transition-all text-sm"
+          disabled={isSubmitting || !message.trim()} // 留言為空時禁用
+          className="w-full py-2 border border-stone-700 text-stone-400 rounded-lg hover:bg-stone-800 hover:text-stone-200 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? '傳送中...' : '發布留言'}
         </button>
@@ -204,6 +209,7 @@ const CommentSection = ({ comments, onSubmit, isAdmin, onDelete }) => {
               <p className="text-stone-400 text-sm whitespace-pre-wrap leading-relaxed">
                 {comment.message}
               </p>
+              {/* 只有管理員登入後才能看到刪除按鈕 */}
               {isAdmin && (
                 <div className="mt-3 pt-2 border-t border-stone-800 flex justify-end">
                   <button 
@@ -231,6 +237,7 @@ const AdminLogin = ({ isOpen, onClose, onLogin }) => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError('');
     try {
       await onLogin(email, password);
       onClose();
@@ -271,6 +278,33 @@ const AdminLogin = ({ isOpen, onClose, onLogin }) => {
   );
 };
 
+const ConfirmModal = ({ isOpen, message, onConfirm, onCancel }) => {
+    if (!isOpen) return null;
+  
+    return (
+      <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+        <div className="bg-stone-900 border border-stone-700 w-full max-w-sm rounded-xl p-6 relative">
+          <h3 className="text-xl text-white mb-4 font-bold">確認操作</h3>
+          <p className="text-stone-400 mb-6">{message}</p>
+          <div className="flex justify-end space-x-3">
+            <button 
+              onClick={onCancel} 
+              className="px-4 py-2 text-stone-400 border border-stone-700 rounded hover:bg-stone-800 transition-colors"
+            >
+              取消
+            </button>
+            <button 
+              onClick={onConfirm} 
+              className="px-4 py-2 bg-red-700 text-white font-bold rounded hover:bg-red-600 transition-colors"
+            >
+              確定刪除
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 // --- Main App Component ---
 
 export default function App() {
@@ -281,17 +315,28 @@ export default function App() {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // 刪除確認狀態
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+
   // 初始化 Auth
   useEffect(() => {
     const initAuth = async () => {
        // 預設訪客登入
-       await signInAnonymously(auth);
+       try {
+         await signInAnonymously(auth);
+       } catch (e) {
+         console.error("Firebase Anonymously Sign In Failed:", e);
+         // 如果匿名登入失敗，仍繼續載入，只是可能無法操作資料庫
+         setLoading(false); 
+       }
     };
     initAuth();
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       // 簡單判斷是否為管理員
+      // 如果用戶不是匿名用戶 (isAnonymous 為 false)，則視為管理員（假設您使用 Email/Password 登入）
       setIsAdmin(currentUser && !currentUser.isAnonymous);
       setLoading(false);
     });
@@ -300,7 +345,8 @@ export default function App() {
 
   // 監聽數據
   useEffect(() => {
-    if (!user) return; // 確保用戶已初始化
+    // 只有在 Firebase 認證完成且有用戶資訊時才嘗試監聽
+    if (!user || loading) return; 
 
     // 1. 悼念人數
     // 路徑: artifacts/{appId}/public/data/statistics/main
@@ -310,10 +356,11 @@ export default function App() {
       if (docSnap.exists()) {
         setMournersCount(docSnap.data().mournersCount || 0);
       } else {
-        setDoc(statsRef, { mournersCount: 0 });
+        // 如果文檔不存在，嘗試初始化它，這需要寫入權限
+        setDoc(statsRef, { mournersCount: 0 }).catch(e => console.error("Error setting initial stats doc:", e));
       }
     }, (error) => {
-      console.error("Stats snapshot error:", error);
+      console.error("Stats snapshot error (Check Security Rules):", error);
     });
 
     // 2. 留言
@@ -328,35 +375,39 @@ export default function App() {
       }));
       setComments(msgs);
     }, (error) => {
-       console.error("Comments snapshot error:", error);
+       console.error("Comments snapshot error (Check Security Rules):", error);
     });
 
     return () => {
       unsubStats();
       unsubComments();
     };
-  }, [user]);
+  }, [user, loading]);
 
   const handleMourn = async (offeringType) => {
-    // 修正：使用與監聽相同的正確路徑
     const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'statistics', 'main');
     try {
       await updateDoc(statsRef, {
         mournersCount: increment(1)
       });
     } catch (e) {
-      // 如果文檔尚未建立（例如初始化延遲），則建立它
-      await setDoc(statsRef, { mournersCount: 1 }, { merge: true });
+      console.error("Error incrementing mournersCount (Check Security Rules):", e);
+      // 如果 update 失敗，再嘗試 setDoc 確保文檔存在
+      await setDoc(statsRef, { mournersCount: 1 }, { merge: true }).catch(e => console.error("Error setting mournersCount:", e));
     }
   };
 
   const handleCommentSubmit = async (name, message) => {
-    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'comments'), {
-      name,
-      message,
-      timestamp: serverTimestamp(),
-      userId: user?.uid
-    });
+    try {
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'comments'), {
+        name,
+        message,
+        timestamp: serverTimestamp(),
+        userId: user?.uid
+      });
+    } catch (e) {
+      console.error("Error adding comment (Check Security Rules):", e);
+    }
   };
 
   const handleAdminLogin = async (email, password) => {
@@ -369,11 +420,23 @@ export default function App() {
     await signInAnonymously(auth); // 回到訪客模式
   };
 
-  const handleDeleteComment = async (commentId) => {
+  // 觸發確認彈窗
+  const handleDeleteComment = (commentId) => {
     if (!isAdmin) return;
-    // 由於我們不能使用 confirm()，這裡只是簡單的 console 提示，實際部署應使用 UI Modal
-    if (window.confirm('確定要刪除這條留言嗎？')) { 
-      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'comments', commentId));
+    setDeleteTargetId(commentId);
+    setShowDeleteConfirm(true);
+  };
+
+  // 確認刪除並執行操作
+  const confirmDelete = async () => {
+    if (!deleteTargetId || !isAdmin) return;
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'comments', deleteTargetId));
+    } catch (e) {
+      console.error("Error deleting comment (Check Admin Rules):", e);
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteTargetId(null);
     }
   };
 
@@ -404,7 +467,7 @@ export default function App() {
           <div className="mt-4">
             {isAdmin ? (
               <button onClick={handleLogout} className="text-stone-500 hover:text-white underline">
-                管理員登出
+                管理員登出 ({user?.email || 'Admin'})
               </button>
             ) : (
               <button 
@@ -422,6 +485,13 @@ export default function App() {
           isOpen={showAdminLogin} 
           onClose={() => setShowAdminLogin(false)}
           onLogin={handleAdminLogin}
+        />
+        
+        <ConfirmModal 
+            isOpen={showDeleteConfirm}
+            message="您確定要永久刪除這條悼念留言嗎？此操作無法撤銷。"
+            onConfirm={confirmDelete}
+            onCancel={() => setShowDeleteConfirm(false)}
         />
       </div>
     </div>
