@@ -65,15 +65,15 @@ const DonationInfo = () => (
   <div className="mx-4 my-6 p-6 bg-stone-900/50 border border-stone-800 rounded-lg text-stone-300 text-sm">
     <div className="flex items-center gap-2 mb-3 text-stone-100 font-bold border-b border-stone-800 pb-2">
       <Landmark size={18} />
-      <span>政府/相關機構 捐款資料</span>
+      <span>援助基金接受個人及私人機構的捐款</span>
     </div>
     <div className="space-y-2 font-mono text-xs md:text-sm">
-      <p>銀行名稱：香港上海滙豐銀行</p>
-      <p>戶口號碼：004-123-456-789</p>
-      <p>戶口名稱：大埔宏福苑火災賑災基金</p>
+      <p>銀行名稱：中國銀行（香港）</p>
+      <p>戶口號碼：012-875-2-190159-7 港元/人民幣/p>
+      <p>戶口名稱：大埔宏福苑援助基金</p>
       <div className="mt-3 text-xs text-stone-500 flex items-start gap-1">
         <Info size={12} className="mt-0.5" />
-        <span>請保留入數紙作為紀錄。如有疑問請聯絡民政事務處。</span>
+        <span>在現階段，團體和市民可以透過WhatsApp號碼9213 2388，登記他們的資料和可捐獻的物資，以便政府整合資料和有需要時與有關人士聯繫。</span>
       </div>
     </div>
   </div>
