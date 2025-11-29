@@ -24,11 +24,21 @@ import {
 import { Flower, Flame, Heart, X, Lock, Trash2, Info, Landmark } from 'lucide-react';
 
 // --- Firebase Configuration ---
-const firebaseConfig = JSON.parse(__firebase_config);
+// <<<<<<<<<<<<<<< 修正黑屏問題：請務必在此填入您的真實 Firebase 設定！ >>>>>>>>>>>>>>>
+const firebaseConfig = {
+  apiKey: "--- 請填入您的 API Key ---", 
+  authDomain: "--- 請填入您的 Auth Domain (例如: project-id.firebaseapp.com) ---",
+  projectId: "--- 請填入您的 Project ID ---",
+  storageBucket: "--- 請填入您的 Storage Bucket ---",
+  messagingSenderId: "--- 請填入您的 Sender ID ---",
+  appId: "--- 請填入您的 App ID ---"
+};
+// 由於此應用程式是在 Vercel/GitHub 上運行，我們使用 Project ID 作為應用程式的隔離 ID。
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const appId = firebaseConfig.projectId;
+
 
 // --- Components ---
 
@@ -143,7 +153,8 @@ const CommentSection = ({ comments, onSubmit, isAdmin, onDelete }) => {
   };
 
   const formatDate = (timestamp) => {
-    if (!timestamp || !timestamp.toDate) return '剛剛';
+    // 檢查 timestamp 是否為有效的 Firebase Timestamp 物件
+    if (!timestamp || typeof timestamp.toDate !== 'function') return '剛剛';
     return timestamp.toDate().toLocaleDateString();
   };
 
@@ -292,7 +303,6 @@ export default function App() {
     if (!user) return; // 確保用戶已初始化
 
     // 1. 悼念人數
-    // 修正：使用 statistics/main (Collection/Doc) 以符合偶數層級要求
     // 路徑: artifacts/{appId}/public/data/statistics/main
     const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'statistics', 'main');
     
@@ -350,6 +360,7 @@ export default function App() {
   };
 
   const handleAdminLogin = async (email, password) => {
+    // 實際的管理員登入邏輯
     await signInWithEmailAndPassword(auth, email, password);
   };
 
@@ -360,7 +371,8 @@ export default function App() {
 
   const handleDeleteComment = async (commentId) => {
     if (!isAdmin) return;
-    if (confirm('確定要刪除這條留言嗎？')) {
+    // 由於我們不能使用 confirm()，這裡只是簡單的 console 提示，實際部署應使用 UI Modal
+    if (window.confirm('確定要刪除這條留言嗎？')) { 
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'comments', commentId));
     }
   };
