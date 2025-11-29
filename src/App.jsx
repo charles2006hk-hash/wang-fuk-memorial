@@ -30,13 +30,21 @@ setLogLevel('debug');
 // --- Firebase Configuration ---
 // <<<<<<<<<<<<<<< 修正黑屏問題：請務必在此填入您的真實 Firebase 設定！ >>>>>>>>>>>>>>>
 const firebaseConfig = {
-  apiKey: "--- 請填入您的 API Key ---", 
-  authDomain: "--- 請填入您的 Auth Domain (例如: project-id.firebaseapp.com) ---",
-  projectId: "--- 請填入您的 Project ID ---",
-  storageBucket: "--- 請填入您的 Storage Bucket ---",
-  messagingSenderId: "--- 請填入您的 Sender ID ---",
-  appId: "--- 請填入您的 App ID ---"
+  apiKey: "AIzaSyBnlsnbiSbr2RPwuzxH59AZDEkxXr8aRZU",
+  authDomain: "wang-fuk-memorial.firebaseapp.com",
+  projectId: "wang-fuk-memorial",
+  storageBucket: "wang-fuk-memorial.firebasestorage.app",
+  messagingSenderId: "615508521860",
+  appId: "1:615508521860:web:296ba699ae8feddbaf63d1",
+  measurementId: "G-S6PCYE5W2W"
 };
+apiKey: "AIzaSyBnlsnbiSbr2RPwuzxH59AZDEkxXr8aRZU",
+  authDomain: "wang-fuk-memorial.firebaseapp.com",
+  projectId: "wang-fuk-memorial",
+  storageBucket: "wang-fuk-memorial.firebasestorage.app",
+  messagingSenderId: "615508521860",
+  appId: "1:615508521860:web:296ba699ae8feddbaf63d1",
+  measurementId: "G-S6PCYE5W2W"
 // 由於此應用程式是在 Vercel/GitHub 上運行，我們使用 Project ID 作為應用程式的隔離 ID。
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
