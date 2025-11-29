@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 您可以在此添加自定義 CSS，但本專案主要依賴 Tailwind */
+body {
+  background-color: black;
+  color: #d6d3d1; /* stone-300 */
+}
