@@ -69,7 +69,7 @@ const DonationInfo = () => (
     </div>
     <div className="space-y-2 font-mono text-xs md:text-sm">
       <p>銀行名稱：中國銀行（香港）</p>
-      <p>戶口號碼：012-875-2-190159-7 港元/人民幣/p>
+      <p>戶口號碼：012-875-2-190159-7 港元/人民幣</p>
       <p>戶口名稱：大埔宏福苑援助基金</p>
       <div className="mt-3 text-xs text-stone-500 flex items-start gap-1">
         <Info size={12} className="mt-0.5" />
